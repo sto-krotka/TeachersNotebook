@@ -1,0 +1,17 @@
+{% extends "teachers_notebook/main.html" %}
+{% block content %}
+    <br>
+<h3>Delete Lesson</h3>
+<p>Are you sure you want to delete <strong>{{ object.subject }}</strong> from the list of lessons?</p>
+<form method="POST">
+    {% csrf_token %}
+    <input value="Yes, delete."
+    type="submit">
+</form>
+    <br>
+<input
+        value="Cancel"
+        type="button"
+        onclick="location.href='{% url "home" %}';">
+{% endblock %}
+

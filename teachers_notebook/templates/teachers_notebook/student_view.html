@@ -1,0 +1,78 @@
+{%  extends 'teachers_notebook/main.html' %}
+{% block content %}
+	<br>
+<div class="row">
+	<div class="col-md">
+		<div class="card card-body">
+			<h5>{{ student.name }}</h5>
+			<hr>
+			<a class="btn btn-outline-info  btn-sm btn-block" href="{% url "update_student" student.pk %}">Update Student</a>
+            <a class="btn btn-outline-info btn-sm btn-block" href="{% url 'delete_student' student.id %}">Delete Student</a>
+            <a class="btn btn-outline-info  btn-sm btn-block" href="{% url 'add_lesson' student.pk %}"><strong>Add lesson</strong></a>
+		</div>
+	</div>
+	<div class="col-md">
+		<div class="card card-body">
+			<h5>Contact Information</h5>
+			<hr>
+            <p>Zoom:<a href="{{ student.zoom_url }}"> click </a></p>
+			<p>Email: {{student.email}}</p>
+			<p>Phone: {{student.phone}}</p>
+		</div>
+	</div>
+	<div class="col-md">
+		<div class="card card-body">
+			<h5>Total Lessons</h5>
+			<hr>
+            <h1 style="text-align: center;padding: 10px">{{ lessons_count }}</h1>
+		</div>
+	</div>
+</div>
+<br>
+<div class="row">
+	<div class="col">
+		<div class="card card-body">
+			<form method="POST">
+                {% csrf_token %}
+				{{form}}
+		    <input type="submit" value="send">
+		  </form>
+{% for lesson in lessons %}
+            <p>{{ lesson.subject }}</p>
+            <p>{{ lesson.notes }}</p>
+            <p>{{ lesson.month }}</p>
+            {% endfor %}
+		</div>
+	</div>
+</div>
+<br>
+<div class="row">
+	<div class="col-md">
+		<div class="card card-body">
+			<table class="table table-sm">
+				<tr>
+					<th>Date</th>
+                    <th>Day</th>
+					<th>Subject</th>
+					<th>Notes</th>
+					<th>Google Docs</th>
+					<th>Update</th>
+					<th>Remove</th>
+				</tr>
+                {% for lesson in lessons %}
+                    <tr>
+					<td>{{ lesson.lesson_date }} </td>
+                    <td>{{ lesson.get_day_of_lesson_display }}</td>
+					<td>{{ lesson.subject }}</td>
+					<td>{{ lesson.notes }}</td>
+					<td><a href="{{ lesson.google_docs_link }}"> link </a></td>
+					<td><a class="btn btn-sm btn-info" href="{% url 'update_lesson' lesson.id %}">Update</a></td>
+					<td><a class="btn btn-sm btn-danger" href="{% url 'delete_lesson' lesson.id %}">Delete</a></td>
+				</tr>
+				{% endfor %}
+			</table>
+		</div>
+	</div>
+</div>
+
+{% endblock %}

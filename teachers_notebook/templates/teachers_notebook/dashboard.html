@@ -1,0 +1,55 @@
+{%  extends 'teachers_notebook/main.html' %}
+{% block content %}
+{%  include 'teachers_notebook/status.html' %}
+    <br>
+<div class="row">
+	<div class="col-md-5">
+		<h5>STUDENTS:</h5>
+		<hr>
+		<div class="card card-body">
+			<a class="btn btn-primary  btn-sm btn-block" href="{% url 'add_student' %}">Create Student</a>
+           {%  include 'teachers_notebook/student_list.html' %}
+			<table class="table table-sm">
+				<tr>
+					<th></th>
+					<th>Student</th>
+					<th>Phone</th>
+				</tr>
+				{% for student in students %}
+					<tr>
+                        <td><a class="btn btn-sm btn-info" href="{% url 'student' student.id %}">View</a></td>
+						<td>{{student.name }}</td>
+						<td>{{student.phone}}</td>
+					</tr>
+				{% endfor %}
+			</table>
+		</div>
+	</div>
+	<div class="col-md-7">
+		<h5>LAST 10 LESSONS</h5>
+		<hr>
+		<div class="card card-body">
+			
+			<table class="table table-sm">
+				<tr>
+					<th>Lesson</th>
+					<th>Date Added</th>
+					<th>Day</th>
+					<th>Details</th>
+					<th>Remove</th>
+				</tr>
+				{% for lesson in lessons %}
+					<tr>
+                        <td>{{ lesson.student }} </td>
+						<td>{{ lesson.lesson_date }}</td>
+						<td>{{ lesson.get_day_of_lesson_display }}</td>
+                        <td><a class="btn btn-sm btn-info" href="{% url 'update_lesson' lesson.id %}">Details</a></td>
+                        <td><a class="btn btn-sm btn-danger" href="{% url 'delete_lesson' lesson.id %}">Delete</a></td>
+					</tr>
+				{% endfor %}
+			</table>
+		</div>
+	</div>
+</div>
+{% endblock %}
+

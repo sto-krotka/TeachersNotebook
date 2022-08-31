@@ -1,0 +1,20 @@
+{% extends "teachers_notebook/main.html" %}
+{% block title %}Add Student{% endblock %}
+{% block content %}
+<h3> Student form: </h3>
+<div>
+    <div>
+        <form method="post">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <input
+                value="Save"
+                type="submit">
+            <input
+                value="Cancel"
+                type="button"
+                onclick="location.href='{% url "home" %}';">
+        </form>
+    </div>
+</div>
+{% endblock %}
