@@ -1,4 +1,4 @@
-# TeachersNotebook
+# Teacher's Notebook
 final project for Python Developer course
 
 CRUD application for foreign language teachers
