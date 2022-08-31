@@ -12,4 +12,4 @@ Main functionalities:
     Searching by lesson subject, notes or month
     Login/Logout
 
-Used technologies: Python with Django framework, Bootstrap, Faker, Pytest, flake8, 
+Used technologies: Python with Django framework, Bootstrap, Faker, Pytest, flake8, django-filter
