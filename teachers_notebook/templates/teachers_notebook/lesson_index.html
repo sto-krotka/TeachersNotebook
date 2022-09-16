@@ -36,29 +36,29 @@
 					</tr>
 				{% endfor %}
 			</table>
-{#pagination diabled due to issues with filtering #}
-{#{% if lessons.has_other_pages %}#}
-{#  <ul class="pagination">#}
-{#    {% if lessons.has_previous %}#}
-{#      <li><a href="?page={{ lessons.previous_page_number }}">&laquo;</a>&nbsp;</li>#}
-{#      <li><a href="?page={{ lessons.previous_page_number }}">&laquo;</a>&nbsp;</li>#}
-{#    {% else %}#}
-{#      <li class="disabled"><span>&laquo;</span></li>#}
-{#    {% endif %}#}
-{#    {% for i in lessons.paginator.page_range %}#}
-{#      {% if lessons.number == i %}#}
-{#        <li class="active"><span>{{ i }} <span class="sr-only">(current)</span>&nbsp;</span></li>#}
-{#      {% else %}#}
-{#        <li><a href="?page={{ i }}">{{ i }}</a>&nbsp</li>#}
-{#      {% endif %}#}
-{#    {% endfor %}#}
-{#    {% if lessons.has_next %}#}
-{#      <li><a href="?page={{ lessons.next_page_number }}">&raquo;</a></li>#}
-{#    {% else %}#}
-{#      <li class="disabled"><span>&raquo;</span></li>#}
-{#    {% endif %}#}
-{#  </ul>#}
-{#{% endif %}#}
+
+{% if lessons.has_other_pages %}
+  <ul class="pagination">
+   {% if lessons.has_previous %}
+      <li><a href="?page={{ lessons.previous_page_number }}">&laquo;</a>&nbsp;</li>
+     <li><a href="?page={{ lessons.previous_page_number }}">&laquo;</a>&nbsp;</li>
+    {% else %}
+      <li class="disabled"><span>&laquo;</span></li>
+    {% endif %}
+    {% for i in lessons.paginator.page_range %}
+      {% if lessons.number == i %}
+        <li class="active"><span>{{ i }} <span class="sr-only">(current)</span>&nbsp;</span></li>
+      {% else %}
+        <li><a href="?page={{ i }}">{{ i }}</a>&nbsp</li>
+      {% endif %}
+    {% endfor %}
+    {% if lessons.has_next %}
+      <li><a href="?page={{ lessons.next_page_number }}&{{ parameters }}">&raquo;</a></li>
+    {% else %}
+      <li class="disabled"><span>&raquo;</span></li>
+    {% endif %}
+  </ul>
+{% endif %}
 		</div>
 	</div>
 {% endblock %}

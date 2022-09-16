@@ -1,45 +1,47 @@
+from django.contrib.auth import authenticate, login
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth.mixins import PermissionRequiredMixin
+from django.contrib.auth.mixins import PermissionRequiredMixin, LoginRequiredMixin
+from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
 from django.urls import reverse_lazy
 from django.views import View
 from django.views.decorators.csrf import csrf_exempt
-from django.views.generic import UpdateView, DeleteView
+from django.views.generic import UpdateView, DeleteView, TemplateView
 from django.shortcuts import render, reverse, redirect
 from .models import Student, Lesson
-from .forms import LessonForm, AddStudentForm, UserRegistrationForm
+from .forms import LessonForm, AddStudentForm, SignUpForm
 from django.db.models import Sum
 from .filters import LessonIndexFilter, StudentIndexFilter
 
 
-# imports regarding pagination:
-# from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
-
-
-def register(request):
+class SignUpView(View):
     """Allows registering a new user account using separate registration form.
     A new user is not saved until password is set"""
+    form_class = SignUpForm
+    template_name = 'registration/register.html'
 
-    if request.method == 'POST':
-        user_form = UserRegistrationForm(request.POST)
-        if user_form.is_valid():
-            new_user = user_form.save(commit=False)
-            new_user.set_password(
-                user_form.cleaned_data['password'])
-            new_user.save()
-            return render(request,
-                          'registration/register_done.html',
-                          {'new_user': new_user})
-    else:
-        user_form = UserRegistrationForm()
-    return render(request,
-                  'registration/register.html',
-                  {'user_form': user_form})
+    def get(self, request):
+        form = self.form_class
+        context = {'form': form}
+        return render(request, template_name=self.template_name, context=context)
+
+    def post(self, request):
+        form = SignUpForm(request.POST)
+        if form.is_valid():
+            user = form.save()
+            user.refresh_from_db()
+            user.save()
+            raw_password = form.cleaned_data.get('password1')
+            user = authenticate(username=user,
+                                password=raw_password)
+            login(request, user)
+            return redirect('home')
+        return render(request, 'register.html', {'form': form})
 
 
-def index(request):
+class LandingPageView(TemplateView):
     """Renders landing page, which provides basic information about the app and
-    links to log-in and registration forms"""
-    return render(request, 'teachers_notebook/index.html')
+      links to log-in and registration forms"""
+    template_name = 'teachers_notebook/index.html'
 
 
 class ProfileView(View, PermissionRequiredMixin):
@@ -50,77 +52,84 @@ class ProfileView(View, PermissionRequiredMixin):
         return render(request, "teachers_notebook/profile.html")
 
 
-@login_required
-def home(request):
+class HomeView(LoginRequiredMixin, View):
     """Renders home page with the total number of conducted
     lessons and the money earned.Displays list of students
     and a list of ten lessons ordered by date created"""
-    lessons = Lesson.objects.all()
-    last_ten = Lesson.objects.filter().order_by('-id')[:10]
-    students = Student.objects.all()
-    total_students = students.count()
-    total_lessons = lessons.count()
-    total_money = Lesson.objects.filter(
-        price__isnull=False) \
-        .aggregate(Sum('price'))
-    context = {'students': students,
-               'lessons': last_ten,
-               'total_lessons': total_lessons,
-               "total_students": total_students,
-               "money_display": total_money}
-    return render(request, 'teachers_notebook/dashboard.html', context)
+
+    def get(self, request):
+        lessons = Lesson.objects.all()
+        last_ten = Lesson.objects.filter().order_by('-id')[:10]
+        students = Student.objects.all()
+        total_students = students.count()
+        total_lessons = lessons.count()
+        total_money = Lesson.objects.filter(price__isnull=False).aggregate(Sum('price'))
+        context = {'students': students,
+                   'lessons': last_ten,
+                   'total_lessons': total_lessons,
+                   'total_students': total_students,
+                   'money_display': total_money}
+        return render(request, 'teachers_notebook/dashboard.html', context)
 
 
-@login_required
-def student_details(request, pk):
+class StudentDetailsView(LoginRequiredMixin, View):
     """Shows information about a student.
     Requires primary key (pk) of the given student.
     Provides lessons filtering."""
-    student = Student.objects.get(id=pk)
-    lessons = student.lesson_set.all()
-    lessons_count = lessons.count()
-    student_filter = StudentIndexFilter(request.GET, queryset=lessons)
-    lessons = student_filter.qs
 
-    # pagination disabled due to filtering issues
-    # page = request.GET.get('page', 1)
-    # paginator = Paginator(lessons, 10)
-    # try:
-    #     lessons = paginator.page(page)
-    # except PageNotAnInteger:
-    #     lessons = paginator.page(1)
-    # except EmptyPage:
-    #     lessons = paginator.page(paginator.num_pages)
+    def get(self, request, pk):
+        student = Student.objects.get(id=pk)
+        lessons = student.lesson_set.all()
+        lessons_count = lessons.count()
+        student_filter = StudentIndexFilter(request.GET, queryset=lessons)
+        lessons = student_filter.qs
+        page = request.GET.get('page', 1)
+        paginator = Paginator(lessons, 10)
+        try:
+            lessons = paginator.page(page)
+        except PageNotAnInteger:
+            lessons = paginator.page(1)
+        except EmptyPage:
+            lessons = paginator.page(paginator.num_pages)
 
-    context = {'student': student,
-               'lessons': lessons,
-               'lessons_count': lessons_count,
-               'student_filter': student_filter}
-
-    # pagination context:
-    #  'page': page,
-    #  'paginator': paginator
-
-    return render(request,
-                  'teachers_notebook/student_details.html',
-                  context)
+        context = {'student': student,
+                   'lessons': lessons,
+                   'lessons_count': lessons_count,
+                   'student_filter': student_filter,
+                   'page': page,
+                   'paginator': paginator}
+        return render(request, 'teachers_notebook/student_details.html', context)
 
 
-@csrf_exempt
-def add_lesson(request, pk):
+class AddLessonView(LoginRequiredMixin, View):
     """Allows to add a new lesson to the database
     of a particular student. Input requires primary key
     of the student"""
-    student = Student.objects.get(id=pk)
-    form = LessonForm(initial={'student': student})
-    if request.method == 'POST':
-        form = LessonForm(request.POST)
+    form_class = LessonForm
+    template_name = 'teachers_notebook/lesson_form.html'
+
+    def get(self, request, pk):
+        student = Student.objects.get(id=pk)
+        form = self.form_class(initial={'student': student})
+        context = {'form': form,
+                   'student': student}
+        return render(request, template_name=self.template_name, context=context)
+
+    def post(self, request, pk):
+        student = Student.objects.get(id=pk)
+        lessons = student.lesson_set.all()
+        lessons_count = lessons.count()
+        student_filter = StudentIndexFilter(request.GET, queryset=lessons)
+        lessons = student_filter.qs
+        form = self.form_class(request.POST)
         if form.is_valid():
             form.save()
-            return redirect(f'/student/{student.pk}')
-
-    context = {'form': form}
-    return render(request, 'teachers_notebook/lesson_form.html', context)
+        context = {'student': student,
+                   'lessons': lessons,
+                   'lessons_count': lessons_count + 1,
+                   'student_filter': student_filter,
+                   'id': pk}
+        return render(request, 'teachers_notebook/student_details.html', context)
 
 
 class UpdateLesson(UpdateView, PermissionRequiredMixin):
@@ -163,19 +172,32 @@ class DeleteLesson(DeleteView, PermissionRequiredMixin):
     """After deleting student redirects to home page"""
 
 
-@csrf_exempt
-def add_student(request):
+class AddStudentView(LoginRequiredMixin, View):
     """Renders a form for creating and saving a new student
     Redirects to the detailed view of the newly added student"""
-    form = AddStudentForm
-    if request.method == "POST":
+    form_class = AddStudentForm
+    template_name = 'teachers_notebook/student_form.html'
+
+    def get(self, request):
+        form = self.form_class()
+        context = {'form': form}
+        return render(request, template_name=self.template_name, context=context)
+
+    def post(self, request):
         form = AddStudentForm(request.POST)
         if form.is_valid():
             form.save()
-            student = Student.objects.last()
-            return redirect(f'/student/{student.pk}/')
-    context = {'form': form}
-    return render(request, 'teachers_notebook/student_form.html', context)
+        student = Student.objects.last()
+        lessons = student.lesson_set.all()
+        lessons_count = lessons.count()
+        student_filter = StudentIndexFilter(request.GET, queryset=lessons)
+        lessons = student_filter.qs
+        context = {'student': student,
+                   'lessons': lessons,
+                   'lessons_count': lessons_count,
+                   'student_filter': student_filter,
+                   'id': student.pk}
+        return render(request, 'teachers_notebook/student_details.html', context)
 
 
 class UpdateStudent(UpdateView, PermissionRequiredMixin):
@@ -214,25 +236,25 @@ class DeleteStudent(DeleteView, PermissionRequiredMixin):
     def get_success_url(self):
         return reverse_lazy("home")
 
-    """Navigates the user to home page after deleting the student"""
 
-
-@csrf_exempt
-def lesson_index(request):
+class LessonIndexView(LoginRequiredMixin, View):
     """Provides a list of all conducted lessons with a filter
     to display lessons by month"""
-    lessons = Lesson.objects.all()
-    index_filter = LessonIndexFilter(request.GET, queryset=lessons)
-    lessons = index_filter.qs
-    # pagination disabled due to filtering issues
-    # page = request.GET.get('page', 1)
-    # paginator = Paginator(lessons, 10)
-    # try:
-    #     lessons = paginator.page(page)
-    # except PageNotAnInteger:
-    #     lessons = paginator.page(1)
-    # except EmptyPage:
-    #     lessons = paginator.page(paginator.num_pages)
-    return render(request,
-                  'teachers_notebook/lesson_index.html',
-                  {'lessons': lessons, 'index_filter': index_filter})
+    def get(self, request):
+        lessons = Lesson.objects.all()
+        index_filter = LessonIndexFilter(request.GET, queryset=lessons)
+        lessons = index_filter.qs
+        _request_copy = self.request.GET.copy()
+        parameters = _request_copy.pop('page', True) and _request_copy.urlencode()
+        page = request.GET.get('page', 1)
+        paginator = Paginator(lessons, 10)
+        try:
+            lessons = paginator.page(page)
+        except PageNotAnInteger:
+            lessons = paginator.page(1)
+        except EmptyPage:
+            lessons = paginator.page(paginator.num_pages)
+        return render(request,
+                      'teachers_notebook/lesson_index.html',
+                      {'lessons': lessons, 'index_filter': index_filter, 'parameters': parameters})
+
