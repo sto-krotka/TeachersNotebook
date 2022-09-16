@@ -13,6 +13,7 @@ from django.db.models import Sum
 from .filters import LessonIndexFilter, StudentIndexFilter
 
 
+
 class SignUpView(View):
     """Allows registering a new user account using separate registration form.
     A new user is not saved until password is set"""
@@ -44,7 +45,7 @@ class LandingPageView(TemplateView):
     template_name = 'teachers_notebook/index.html'
 
 
-class ProfileView(View, PermissionRequiredMixin):
+class ProfileView(LoginRequiredMixin, View):
     """Renders a page with profile settings.
     Accessible only by logged-in users"""
 
@@ -58,12 +59,12 @@ class HomeView(LoginRequiredMixin, View):
     and a list of ten lessons ordered by date created"""
 
     def get(self, request):
-        lessons = Lesson.objects.all()
-        last_ten = Lesson.objects.filter().order_by('-id')[:10]
-        students = Student.objects.all()
-        total_students = students.count()
-        total_lessons = lessons.count()
-        total_money = Lesson.objects.filter(price__isnull=False).aggregate(Sum('price'))
+        lessons = Lesson.objects.filter(owner_id=request.user).all()
+        last_ten = Lesson.objects.filter(owner_id=request.user).order_by('-id')[:10]
+        students = Student.objects.filter(owner_id=request.user).all()
+        total_students = students.filter(owner_id=request.user).count()
+        total_lessons = lessons.filter(owner_id=request.user).count()
+        total_money = Lesson.objects.filter(price__isnull=False, owner_id=request.user).aggregate(Sum('price'))
         context = {'students': students,
                    'lessons': last_ten,
                    'total_lessons': total_lessons,
@@ -109,14 +110,14 @@ class AddLessonView(LoginRequiredMixin, View):
     template_name = 'teachers_notebook/lesson_form.html'
 
     def get(self, request, pk):
-        student = Student.objects.get(id=pk)
+        student = Student.objects.filter(owner_id=request.user).get(id=pk)
         form = self.form_class(initial={'student': student})
         context = {'form': form,
                    'student': student}
         return render(request, template_name=self.template_name, context=context)
 
     def post(self, request, pk):
-        student = Student.objects.get(id=pk)
+        student = Student.objects.filter(owner_id=request.user).get(id=pk)
         lessons = student.lesson_set.all()
         lessons_count = lessons.count()
         student_filter = StudentIndexFilter(request.GET, queryset=lessons)
@@ -132,7 +133,7 @@ class AddLessonView(LoginRequiredMixin, View):
         return render(request, 'teachers_notebook/student_details.html', context)
 
 
-class UpdateLesson(UpdateView, PermissionRequiredMixin):
+class UpdateLesson(LoginRequiredMixin, UpdateView):
     """Django generic view for modifying created lesson"""
     model = Lesson
     fields = [
@@ -157,7 +158,7 @@ class UpdateLesson(UpdateView, PermissionRequiredMixin):
         return reverse("home")
 
 
-class DeleteLesson(DeleteView, PermissionRequiredMixin):
+class DeleteLesson(LoginRequiredMixin, DeleteView):
     """Django generic view for removing a created lesson"""
     model = Lesson
 
@@ -187,7 +188,7 @@ class AddStudentView(LoginRequiredMixin, View):
         form = AddStudentForm(request.POST)
         if form.is_valid():
             form.save()
-        student = Student.objects.last()
+        student = Student.objects.filter(owner_id=request.user).last()
         lessons = student.lesson_set.all()
         lessons_count = lessons.count()
         student_filter = StudentIndexFilter(request.GET, queryset=lessons)
@@ -200,7 +201,7 @@ class AddStudentView(LoginRequiredMixin, View):
         return render(request, 'teachers_notebook/student_details.html', context)
 
 
-class UpdateStudent(UpdateView, PermissionRequiredMixin):
+class UpdateStudent(LoginRequiredMixin, UpdateView):
     """Django generic view for modifying information about the student"""
     model = Student
     fields = [
@@ -223,7 +224,7 @@ class UpdateStudent(UpdateView, PermissionRequiredMixin):
         return reverse('student', args=[self.object.pk])
 
 
-class DeleteStudent(DeleteView, PermissionRequiredMixin):
+class DeleteStudent(LoginRequiredMixin, DeleteView):
     """Django generic view for removing a particular student"""
     model = Student
 
@@ -240,8 +241,9 @@ class DeleteStudent(DeleteView, PermissionRequiredMixin):
 class LessonIndexView(LoginRequiredMixin, View):
     """Provides a list of all conducted lessons with a filter
     to display lessons by month"""
+
     def get(self, request):
-        lessons = Lesson.objects.all()
+        lessons = Lesson.objects.filter(owner_id=request.user).all()
         index_filter = LessonIndexFilter(request.GET, queryset=lessons)
         lessons = index_filter.qs
         _request_copy = self.request.GET.copy()
@@ -257,4 +259,3 @@ class LessonIndexView(LoginRequiredMixin, View):
         return render(request,
                       'teachers_notebook/lesson_index.html',
                       {'lessons': lessons, 'index_filter': index_filter, 'parameters': parameters})
-

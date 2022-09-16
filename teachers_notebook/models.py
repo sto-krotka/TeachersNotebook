@@ -1,4 +1,5 @@
 from django.db import models
+from django.contrib.auth.models import User
 
 LEVELS = (
         (1, 'A1'),
@@ -43,6 +44,7 @@ WEEK_DAYS = (
 
 
 class Student(models.Model):
+    owner = models.ForeignKey(User, related_name='students_created', on_delete=models.CASCADE)
     name = models.CharField(max_length=150)
     phone = models.CharField(max_length=150)
     email = models.EmailField()
@@ -56,6 +58,7 @@ class Student(models.Model):
 
 
 class Lesson(models.Model):
+    owner = models.ForeignKey(User, related_name='lessons_created', on_delete=models.CASCADE)
     subject = models.CharField(max_length=250)
     student = models.ForeignKey(Student, on_delete=models.CASCADE)
     month = models.CharField(max_length=5, choices=MONTH)
