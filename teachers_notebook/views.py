@@ -109,22 +109,28 @@ class AddLessonView(LoginRequiredMixin, View):
     form_class = LessonForm
     template_name = 'teachers_notebook/lesson_form.html'
 
-    def get(self, request, pk):
-        student = Student.objects.filter(owner_id=request.user).get(id=pk)
+    def get(self, request, *args, **kwargs):
+        pk = kwargs['pk']
+#         zabezpieczyć przed 404 try except 
+        student = Student.objects.filter(owner=request.user).get(id=pk)
         form = self.form_class(initial={'student': student})
         context = {'form': form,
                    'student': student}
         return render(request, template_name=self.template_name, context=context)
 
-    def post(self, request, pk):
-        student = Student.objects.filter(owner_id=request.user).get(id=pk)
+    def post(self, request, *args, **kwargs):
+        pk = kwargs['pk']
+#         tu też try except
+        student = Student.objects.filter(owner=request.user).get(id=pk)
         lessons = student.lesson_set.all()
         lessons_count = lessons.count()
         student_filter = StudentIndexFilter(request.GET, queryset=lessons)
         lessons = student_filter.qs
         form = self.form_class(request.POST)
         if form.is_valid():
-            form.save()
+            instance = form.save(commit=True)
+            instance.owner = request.user
+            instance.save()
         context = {'student': student,
                    'lessons': lessons,
                    'lessons_count': lessons_count + 1,
