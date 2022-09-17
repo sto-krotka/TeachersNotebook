@@ -72,4 +72,4 @@ class Lesson(models.Model):
     price = models.IntegerField()
 
     class Meta:
-        ordering = ["lesson_date"]
+        ordering = ["-lesson_date"]
