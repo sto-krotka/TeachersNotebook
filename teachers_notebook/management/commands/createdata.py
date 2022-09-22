@@ -3,6 +3,7 @@ from django.core.management.base import BaseCommand
 from faker import Faker
 import faker.providers
 from ...models import Student, Lesson
+from django.contrib.auth.models import User
 
 
 MONTHS = [
@@ -31,24 +32,27 @@ class Command(BaseCommand):
         fake = Faker(["en_US"])
         fake.add_provider(Provider)
 
+        # for _ in range(15):
+        #     owner = User.objects.get(username='User1')
+        #     name = fake.name()
+        #     phone = fake.phone_number()
+        #     email = fake.email()
+        #     age = random.randint(10, 70)
+        #     level = random.randint(1, 9)
+        #     student_info = fake.text(max_nb_chars=100)
+        #     zoom_url = fake.url()
+        #     Student.objects.create(
+        #         owner=owner,
+        #         name=name,
+        #         phone=phone,
+        #         email=email,
+        #         age=age,
+        #         level=level,
+        #         student_info=student_info,
+        #         zoom_url=zoom_url,
+        #     )
         for _ in range(15):
-            name = fake.name()
-            phone = fake.phone_number()
-            email = fake.email()
-            age = random.randint(10, 70)
-            level = random.randint(1, 9)
-            student_info = fake.text(max_nb_chars=100)
-            zoom_url = fake.url()
-            Student.objects.create(
-                name=name,
-                phone=phone,
-                email=email,
-                age=age,
-                level=level,
-                student_info=student_info,
-                zoom_url=zoom_url,
-            )
-        for _ in range(15):
+            owner = User.objects.get(username='User1')
             student_id = random.randint(1, 15)
             subject = fake.text(max_nb_chars=50)
             month = fake.months()
@@ -59,6 +63,7 @@ class Command(BaseCommand):
             day_of_lesson = random.randint(1, 7)
             price = random.randint(30, 90)
             Lesson.objects.create(
+                owner=owner,
                 subject=subject,
                 student_id=student_id,
                 month=month,
