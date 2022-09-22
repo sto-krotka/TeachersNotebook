@@ -1,17 +1,15 @@
 from django.contrib.auth import authenticate, login
-from django.contrib.auth.decorators import login_required
-from django.contrib.auth.mixins import PermissionRequiredMixin, LoginRequiredMixin
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
 from django.urls import reverse_lazy
 from django.views import View
-from django.views.decorators.csrf import csrf_exempt
 from django.views.generic import UpdateView, DeleteView, TemplateView
 from django.shortcuts import render, reverse, redirect
 from .models import Student, Lesson
 from .forms import LessonForm, AddStudentForm, SignUpForm
 from django.db.models import Sum
 from .filters import LessonIndexFilter, StudentIndexFilter
-
+from django.shortcuts import get_object_or_404
 
 
 class SignUpView(View):
@@ -20,12 +18,12 @@ class SignUpView(View):
     form_class = SignUpForm
     template_name = 'registration/register.html'
 
-    def get(self, request):
+    def get(self, request, *args, **kwargs):
         form = self.form_class
         context = {'form': form}
         return render(request, template_name=self.template_name, context=context)
 
-    def post(self, request):
+    def post(self, request, *args, **kwargs):
         form = SignUpForm(request.POST)
         if form.is_valid():
             user = form.save()
@@ -49,7 +47,7 @@ class ProfileView(LoginRequiredMixin, View):
     """Renders a page with profile settings.
     Accessible only by logged-in users"""
 
-    def get(self, request):
+    def get(self, request, *args, **kwargs):
         return render(request, "teachers_notebook/profile.html")
 
 
@@ -58,7 +56,7 @@ class HomeView(LoginRequiredMixin, View):
     lessons and the money earned.Displays list of students
     and a list of ten lessons ordered by date created"""
 
-    def get(self, request):
+    def get(self, request, *args, **kwargs):
         lessons = Lesson.objects.filter(owner_id=request.user).all()
         last_ten = Lesson.objects.filter(owner_id=request.user).order_by('-id')[:10]
         students = Student.objects.filter(owner_id=request.user).all()
@@ -78,7 +76,8 @@ class StudentDetailsView(LoginRequiredMixin, View):
     Requires primary key (pk) of the given student.
     Provides lessons filtering."""
 
-    def get(self, request, pk):
+    def get(self, request, *args, **kwargs):
+        pk = kwargs['pk']
         student = Student.objects.get(id=pk)
         lessons = student.lesson_set.all()
         lessons_count = lessons.count()
@@ -111,7 +110,7 @@ class AddLessonView(LoginRequiredMixin, View):
 
     def get(self, request, *args, **kwargs):
         pk = kwargs['pk']
-#         zabezpieczyć przed 404 try except 
+        student = get_object_or_404(Student, pk=pk)
         student = Student.objects.filter(owner=request.user).get(id=pk)
         form = self.form_class(initial={'student': student})
         context = {'form': form,
@@ -120,7 +119,7 @@ class AddLessonView(LoginRequiredMixin, View):
 
     def post(self, request, *args, **kwargs):
         pk = kwargs['pk']
-#         tu też try except
+        student = get_object_or_404(Student, pk=pk)
         student = Student.objects.filter(owner=request.user).get(id=pk)
         lessons = student.lesson_set.all()
         lessons_count = lessons.count()
@@ -185,15 +184,17 @@ class AddStudentView(LoginRequiredMixin, View):
     form_class = AddStudentForm
     template_name = 'teachers_notebook/student_form.html'
 
-    def get(self, request):
+    def get(self, request, *args, **kwargs):
         form = self.form_class()
         context = {'form': form}
         return render(request, template_name=self.template_name, context=context)
 
-    def post(self, request):
+    def post(self, request, *args, **kwargs):
         form = AddStudentForm(request.POST)
         if form.is_valid():
-            form.save()
+            instance = form.save(commit=True)
+            instance.owner = request.user
+            instance.save()
         student = Student.objects.filter(owner_id=request.user).last()
         lessons = student.lesson_set.all()
         lessons_count = lessons.count()
@@ -248,7 +249,7 @@ class LessonIndexView(LoginRequiredMixin, View):
     """Provides a list of all conducted lessons with a filter
     to display lessons by month"""
 
-    def get(self, request):
+    def get(self, request, *args, **kwargs):
         lessons = Lesson.objects.filter(owner_id=request.user).all()
         index_filter = LessonIndexFilter(request.GET, queryset=lessons)
         lessons = index_filter.qs

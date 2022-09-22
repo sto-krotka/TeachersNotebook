@@ -1,9 +1,8 @@
 import random
-
 from django.core.management.base import BaseCommand
 from faker import Faker
 import faker.providers
-from teachers_notebook.models import Student, Lesson
+from ...models import Student, Lesson
 
 
 MONTHS = [

@@ -16,7 +16,6 @@ class LessonForm(ModelForm):
     class Meta:
         model = Lesson
         fields = [
-            'owner',
             'subject',
             'student',
             'month',
@@ -35,7 +34,6 @@ class AddStudentForm(ModelForm):
     class Meta:
         model = Student
         fields = [
-            'owner',
             'name',
             'phone',
             'email',
